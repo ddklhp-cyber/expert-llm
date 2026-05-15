@@ -29,13 +29,13 @@
 ```
 Input: "2 + 3 = 5"  (domain: math)
 
-  ┌─────────────────────────────────────────────┐
-  │  Shared Attention (always active)            │
-  │  Shared FFN_base (always active)             │
-  │  Expert FFN_math (active for this input)     │
-  │  Expert FFN_language (inactive)              │
-  │  Expert FFN_code (inactive)                  │
-  └─────────────────────────────────────────────┘
+┌───────────────────────────────────────────┐
+│ Shared Attention (always active)          │
+│ Shared FFN_base (always active)           │
+│ Expert FFN_math (active for this input)   │
+│ Expert FFN_language (inactive)            │
+│ Expert FFN_code (inactive)                │
+└───────────────────────────────────────────┘
 
 Forward:
   hidden = attention(input)
@@ -142,7 +142,16 @@ Scores = softmax(Q·Kᵀ / √head_dim + causal_mask)
 Output = Scores · V → Linear → hidden
 ```
 
-Causal mask ensures each token only attends to previous tokens (autoregressive). RoPE encodes relative position without learned position embeddings.
+Causal mask ensures each token only attends to previous tokens (autoregressive) — when predicting the next word, the model cannot "cheat" by looking ahead:
+
+```
+         the  cat  sat
+the     [ ✓    ✗    ✗ ]   ← "the" can only see itself
+cat     [ ✓    ✓    ✗ ]   ← "cat" sees "the" and itself
+sat     [ ✓    ✓    ✓ ]   ← "sat" sees everything before it
+```
+
+RoPE (Rotary Position Embedding) encodes word order by rotating Q/K vectors based on position. Tokens close together get similar rotations, far apart get different ones. This encodes *relative* distance rather than absolute position — generalizes to unseen sequence lengths with no extra parameters. Used by LLaMA, Mistral, and most modern LLMs.
 
 ### FFN (SwiGLU)
 
@@ -165,7 +174,7 @@ Pre-norm before attention and FFN:
 output = weight * x / RMS(x)
 ```
 
-Simpler and faster than LayerNorm (no mean subtraction, no bias).
+Traditional LayerNorm does `(x - mean) / std * weight + bias` (4 ops). RMSNorm drops the mean subtraction and bias (2 ops) — fewer computations, faster, and works just as well for LLMs in practice. Used by LLaMA, Mistral, and most modern architectures.
 
 ### Per-Layer Forward Pass
 
