@@ -129,7 +129,7 @@ input word IDs → nn.Embedding(vocab, 64) → hidden vectors
 output: hidden → Linear(64, vocab) → logits (shares embedding weights)
 ```
 
-Trained from random init. No pre-trained vectors (Word2Vec/GloVe). The LM head reuses embedding weights (weight tying) to reduce parameters.
+Trained from random init. No pre-trained vectors (Word2Vec/GloVe). The LM head reuses the same weight matrix as the embedding (weight tying) — instead of two separate `vocab × 64` matrices, we share one. This cuts embedding parameters in half because "the meaning of a word" and "predicting a word" are related. Used by GPT-2, LLaMA, T5, and most modern LLMs.
 
 ### Attention
 
@@ -165,6 +165,8 @@ output = down(SiLU(gate) * up)
 ```
 
 SwiGLU gating (used in LLaMA/Mistral) — the gate controls information flow, more expressive than standard ReLU FFN.
+
+**Base FFN** uses `ffn_size=128` (2× expansion of hidden=64) — this is the main capacity shared across all domains. **Expert FFNs** use `ffn_size=64` (1× expansion, no expansion) — intentionally smaller since each expert only needs to capture domain-specific patterns on top of what the base already provides.
 
 ### RMSNorm
 
